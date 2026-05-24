@@ -216,3 +216,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Kalshi bot: keep proprietary logic & data out of public repo ---
+.env.*
+!.env.example
+strategies/private/
+research/
+data/
+logs/
+*.csv
+*.parquet
+*.pkl
