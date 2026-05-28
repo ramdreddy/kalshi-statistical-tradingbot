@@ -36,6 +36,7 @@ class WeatherFeeder:
             temperature_f=round(base_temp, 1),
             humidity_pct=round(55.0 + 10.0 * math.cos(self._tick / 5.0), 1),
             wind_speed_mph=round(8.0 + 2.0 * math.sin(self._tick / 3.0), 1),
+            source="mock",
         )
 
     async def stream(self) -> AsyncIterator[WeatherMetrics]:

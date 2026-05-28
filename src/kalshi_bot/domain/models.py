@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
 
 
 class Side(str, Enum):
@@ -47,6 +48,10 @@ class WeatherMetrics:
     humidity_pct: float
     wind_speed_mph: float
     observed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    forecast_high_f: Optional[float] = None
+    observed_high_f: Optional[float] = None
+    source: str = "unknown"
+    series_ticker: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -56,3 +61,5 @@ class ImbalanceSignal:
     edge_cents: int
     confidence: float
     reason: str
+    true_probability: float
+    market_price_cents: int
