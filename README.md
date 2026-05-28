@@ -42,15 +42,32 @@ All runtime options are loaded from environment variables (see `.env.example`). 
 | `KALSHI_MARKET_TICKER` | Target contract ticker |
 | `WEATHER_POLL_INTERVAL_SEC` | Dummy weather poll interval |
 | `ORDERBOOK_MOCK_INTERVAL_SEC` | Mock order-book update interval |
-| `USE_MOCK_EXCHANGE` | Must be `true` until live WS client is added |
+| `USE_MOCK_EXCHANGE` | `false` for live Kalshi WebSocket |
+| `USE_MOCK_WEATHER` | `false` for Open-Meteo |
+| `KALSHI_API_KEY_ID` / `KALSHI_PRIVATE_KEY_PATH` | Kalshi credentials |
+| `KALSHI_USE_DEMO` | `true` = demo API hosts (recommended first) |
 | `LOG_LEVEL` | Python logging level |
+
+## Connecting APIs
+
+See step-by-step setup in the response docs below, or run:
+
+```bash
+cp .env.example .env
+# edit .env with your Kalshi key + ticker
+pip install pydantic pydantic-settings scipy websockets cryptography httpx pytest
+export PYTHONPATH=src
+python scripts/test_connections.py
+```
+
+Phased rollout: (1) weather only, (2) Kalshi demo read-only, (3) production.
 
 ## Extending
 
 1. Subclass `BaseStrategy` and implement `evaluate_imbalance`.
 2. Register the strategy in `main.py` (or a factory module).
-3. Replace `WeatherFeeder.fetch_metrics` with a real weather API client.
-4. Swap `MockKalshiOrderBookWebSocket` for a live Kalshi WebSocket client using `KALSHI_WS_URL`.
+3. Use `OpenMeteoFeeder` or add another feed under `feeds/`.
+4. Use `KalshiOrderBookWebSocket` with `USE_MOCK_EXCHANGE=false`.
 
 ## Tests
 

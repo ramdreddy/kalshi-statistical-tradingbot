@@ -22,14 +22,19 @@ class MockKalshiOrderBookWebSocket:
 
     def __init__(
         self,
-        ticker: str,
+        ticker: str | list[str],
         interval_sec: float = 1.0,
         seed: int | None = None,
     ) -> None:
-        self._ticker = ticker
+        tickers = [ticker] if isinstance(ticker, str) else list(ticker)
+        if not tickers:
+            raise ValueError("At least one ticker is required")
+        self._tickers = [t.upper() for t in tickers]
+        self._ticker = self._tickers[0]
         self._interval_sec = interval_sec
         self._rng = random.Random(seed)
-        self._mid_cents = 48
+        self._mid_by_ticker = {t: 48 for t in self._tickers}
+        self._cursor = 0
 
     async def connect(self) -> None:
         logger.info("mock ws connected ticker=%s", self._ticker)
@@ -43,11 +48,15 @@ class MockKalshiOrderBookWebSocket:
         logger.info("mock ws disconnected ticker=%s", self._ticker)
 
     def _next_snapshot(self) -> OrderBookSnapshot:
+        ticker = self._tickers[self._cursor % len(self._tickers)]
+        self._cursor += 1
         drift = self._rng.randint(-2, 2)
-        self._mid_cents = max(5, min(95, self._mid_cents + drift))
+        mid = self._mid_by_ticker[ticker]
+        mid = max(5, min(95, mid + drift))
+        self._mid_by_ticker[ticker] = mid
         spread = self._rng.randint(2, 6)
-        bid = self._mid_cents - spread // 2
-        ask = self._mid_cents + (spread - spread // 2)
+        bid = mid - spread // 2
+        ask = mid + (spread - spread // 2)
 
         def levels(anchor: int, descending: bool) -> tuple[OrderBookLevel, ...]:
             prices = [anchor + i * (1 if not descending else -1) for i in range(3)]
@@ -57,7 +66,7 @@ class MockKalshiOrderBookWebSocket:
             )
 
         return OrderBookSnapshot(
-            ticker=self._ticker,
+            ticker=ticker,
             yes_bids=levels(bid, descending=True),
             yes_asks=levels(ask, descending=False),
         )
