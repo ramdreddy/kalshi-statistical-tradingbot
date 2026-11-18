@@ -12,7 +12,9 @@ from kalshi_bot.engine.runner import TradingEngine
 from kalshi_bot.exchange.market_discovery import resolve_trading_markets
 from kalshi_bot.exchange.mock_ws import MockKalshiOrderBookWebSocket
 from kalshi_bot.domain.market import WeatherBracketMarket
+from kalshi_bot.feeds.composite import CompositeWeatherFeeder
 from kalshi_bot.feeds.multi_nws import MultiSeriesNWSFeeder
+from kalshi_bot.feeds.twc import MultiSeriesTWCFeeder
 from kalshi_bot.feeds.weather import WeatherFeeder
 from kalshi_bot.feeds.nws import NWSFeeder
 from kalshi_bot.feeds.open_meteo import OpenMeteoFeeder
@@ -42,7 +44,15 @@ def _build_weather_feeder(
     settlement_dates = event_dates_by_series(markets)
 
     if settings.weather_provider == "nws" and len(series_set) > 1:
-        return MultiSeriesNWSFeeder.for_markets(markets, settings)
+        nws = MultiSeriesNWSFeeder.for_markets(markets, settings)
+        if not settings.twc_api_key:
+            return nws
+        twc = MultiSeriesTWCFeeder.for_markets(
+            markets,
+            api_key=settings.twc_api_key,
+            poll_interval_sec=settings.weather_poll_interval_sec,
+        )
+        return CompositeWeatherFeeder([nws, twc])
 
     if settings.weather_provider == "nws":
         series = next(iter(series_set), settings.weather_series_ticker.upper())
@@ -146,6 +156,8 @@ async def run_bot() -> None:
     strategy = WeatherImbalanceStrategy.from_markets(
         markets,
         forecast_std_f=settings.weather_forecast_std_f,
+        max_disagreement_f=settings.forecast_max_disagreement_f,
+        min_sources=settings.forecast_min_sources,
     )
     weather_feeder = _build_weather_feeder(settings, markets)
     orderbook_ws = _build_orderbook_ws(settings, markets)
@@ -158,7 +170,10 @@ async def run_bot() -> None:
         settings=settings,
     )
 
-    if isinstance(weather_feeder, MultiSeriesNWSFeeder):
+    if isinstance(weather_feeder, CompositeWeatherFeeder):
+        logger.info("warming up forecasts from %d sources...", len(weather_feeder.feeders))
+        engine.seed_weather(await weather_feeder.warm_up())
+    elif isinstance(weather_feeder, MultiSeriesNWSFeeder):
         logger.info("warming up NWS forecasts for %d cities...", len(weather_feeder.series_tickers))
         engine.seed_weather(await weather_feeder.warm_up())
     elif isinstance(weather_feeder, NWSFeeder):
