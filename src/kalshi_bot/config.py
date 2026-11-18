@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     nws_user_agent: str = "kalshi-weather-bot/0.1.0 (contact@example.com)"
     weather_strike_temp_f: float = 75.0
     weather_forecast_std_f: float = 3.5
+    # The Weather Company forecasts (Kalshi settles via TWC). Empty = NWS only.
+    twc_api_key: str = ""
+    # Strategy: skip a city when forecast sources disagree by more than this,
+    # and require this many sources before trading it.
+    forecast_max_disagreement_f: float = 2.0
+    forecast_min_sources: int = 1
 
     # Risk / sizing
     bet_size_dollars: float = 1.0
@@ -80,6 +86,7 @@ class Settings(BaseSettings):
     def apply_environment_defaults(self) -> "Settings":
         self.kalshi_api_key_id = self.kalshi_api_key_id.strip()
         self.kalshi_private_key_path = self.kalshi_private_key_path.strip()
+        self.twc_api_key = self.twc_api_key.strip()
         if self.kalshi_use_demo:
             self.kalshi_api_base_url = _DEMO_API
             self.kalshi_ws_url = _DEMO_WS

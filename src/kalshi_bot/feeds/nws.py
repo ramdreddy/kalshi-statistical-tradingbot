@@ -154,48 +154,50 @@ class NWSFeeder(WeatherFeeder):
         points = await self._get_json(client, points_url)
         props = points.get("properties") or {}
 
-        match: _ForecastDayMatch | None = None
+        # NWS publishes two forecasts of the same daily high: the official
+        # 12-period "High: NN" and the hourly grid. The hourly grid's maximum
+        # misses the peak between hours and runs ~1-2°F low, so use the higher
+        # of the two (either one alone if the other is unavailable).
+        hourly_match: _ForecastDayMatch | None = None
         hourly_url = props.get("forecastHourly")
         if hourly_url:
             try:
                 hourly = await self._get_json(client, str(hourly_url))
-                match = select_forecast_high_from_hourly(
+                hourly_match = select_forecast_high_from_hourly(
                     hourly.get("properties", {}).get("periods") or [],
                     self._forecast_date,
                     self._timezone,
                 )
             except Exception:
-                logger.warning(
-                    "NWS hourly forecast fetch failed; falling back to 12-period",
-                    exc_info=True,
-                )
+                logger.warning("NWS hourly forecast fetch failed", exc_info=True)
 
-        if match is None:
-            forecast_url = props.get("forecast")
-            if not forecast_url:
-                raise ValueError("NWS points response missing forecast URL")
-            forecast = await self._get_json(client, str(forecast_url))
-            periods = forecast.get("properties", {}).get("periods") or []
-            match = select_forecast_high_for_date(
-                periods,
-                self._forecast_date,
-                self._timezone,
-            )
-            if match is None:
-                available = [
-                    f"{p.get('name')}|{_local_date_from_period(p['startTime'], self._timezone)}"
-                    for p in periods
-                    if p.get("isDaytime", True) and p.get("startTime")
-                ]
-                raise ValueError(
-                    f"No NWS forecast for settlement date={self._forecast_date} "
-                    f"tz={self._timezone.key}; daytime periods: {available[:14]}"
+        daily_match: _ForecastDayMatch | None = None
+        daily_periods: list[dict] = []
+        forecast_url = props.get("forecast")
+        if forecast_url:
+            try:
+                forecast = await self._get_json(client, str(forecast_url))
+                daily_periods = forecast.get("properties", {}).get("periods") or []
+                daily_match = select_forecast_high_for_date(
+                    daily_periods,
+                    self._forecast_date,
+                    self._timezone,
                 )
-            logger.warning(
-                "using 12-period forecast (hourly unavailable) day=%s high=%.0f°F",
-                match.target_date,
-                match.temperature_f,
+            except Exception:
+                logger.warning("NWS 12-period forecast fetch failed", exc_info=True)
+
+        candidates = [m for m in (daily_match, hourly_match) if m is not None]
+        if not candidates:
+            available = [
+                f"{p.get('name')}|{_local_date_from_period(p['startTime'], self._timezone)}"
+                for p in daily_periods
+                if p.get("isDaytime", True) and p.get("startTime")
+            ]
+            raise ValueError(
+                f"No NWS forecast for settlement date={self._forecast_date} "
+                f"tz={self._timezone.key}; daytime periods: {available[:14]}"
             )
+        match = max(candidates, key=lambda m: m.temperature_f)
 
         logger.info(
             "nws forecast day=%s high=%.0f°F (%s, settlement-aligned)",
