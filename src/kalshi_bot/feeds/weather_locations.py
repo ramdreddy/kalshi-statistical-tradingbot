@@ -46,10 +46,11 @@ class WeatherLocation:
 
 
 # City suffix after KXHIGH(T) — settlement stations / airports used by Kalshi.
+# Verified 2026-11-17 against each series' rules_primary (NWS CLI station code).
 CITY_LOCATIONS: dict[str, WeatherLocation] = {
     "NY": WeatherLocation(40.7812, -73.9665, "New York, NY (Central Park)"),
     "NYC": WeatherLocation(40.7812, -73.9665, "New York, NY (Central Park)"),
-    "CHI": WeatherLocation(41.9742, -87.9073, "Chicago, IL (O'Hare)"),
+    "CHI": WeatherLocation(41.7868, -87.7522, "Chicago, IL (Midway, CLIMDW)"),
     "MIA": WeatherLocation(25.7959, -80.2870, "Miami, FL (MIA)"),
     "LAX": WeatherLocation(33.9425, -118.4081, "Los Angeles, CA (LAX)"),
     "DEN": WeatherLocation(39.8561, -104.6737, "Denver, CO (DEN)"),
@@ -58,7 +59,7 @@ CITY_LOCATIONS: dict[str, WeatherLocation] = {
     "ATL": WeatherLocation(33.6407, -84.4277, "Atlanta, GA (ATL)"),
     "DFW": WeatherLocation(32.8998, -97.0403, "Dallas/Fort Worth, TX (DFW)"),
     "DAL": WeatherLocation(32.8998, -97.0403, "Dallas/Fort Worth, TX (DFW)"),
-    "HOU": WeatherLocation(29.9902, -95.3368, "Houston, TX (IAH)"),
+    "HOU": WeatherLocation(29.6454, -95.2789, "Houston, TX (Hobby, CLIHOU)"),
     "SEA": WeatherLocation(47.4502, -122.3088, "Seattle, WA (SEA)"),
     "BOS": WeatherLocation(42.3656, -71.0096, "Boston, MA (BOS)"),
     "PHIL": WeatherLocation(39.8744, -75.2424, "Philadelphia, PA (PHL)"),
